@@ -4,11 +4,11 @@ run-name: Get Teams Presence - Terraform ${{ inputs.tf_action }}, Docker ${{ inp
 on:
   workflow_dispatch:
     inputs:
-      # environment:
-      #   description: 'Environment to run deployments against'
-      #   type: environment
-      #   required: true                
-      #   default: 'development'
+      environment:
+        description: 'Environment to run deployments against'
+        type: environment
+        required: true
+        default: 'dev'
       tf_action:
         description: 'The action terraform should apply'
         type: choice
@@ -28,7 +28,7 @@ jobs:
   storage-acct:
     name: "Create Storage Account if not exists"
     runs-on: ubuntu-latest
-    # environment: ${{ inputs.build_env }}
+    environment: ${{ inputs.environment }}
 
     env:
       STATE_STG_LOC: eastus2
@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@main
 
       - name: Read backend file
-        run: cat terraform/backends/backend.conf >> ${GITHUB_ENV}
+        run: cat terraform/backends/${{ inputs.environment }}.conf >> ${GITHUB_ENV}
 
       - name: Azure Login
         uses: azure/login@v1
@@ -62,10 +62,11 @@ jobs:
     name: "Terraform Build"
     needs: [storage-acct]
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     
-    outputs: 
-      SB_CONN_STRING: ${{ steps.outputs.outputs.SB_CONN_STRING }}
-      QUEUE_NAME: ${{ steps.outputs.outputs.QUEUE_NAME }}
+    # outputs: 
+    #   SB_CONN_STRING: ${{ steps.outputs.outputs.SB_CONN_STRING }}
+    #   QUEUE_NAME: ${{ steps.outputs.outputs.QUEUE_NAME }}
     
     env:
       WORKING_DIR: terraform
@@ -81,7 +82,12 @@ jobs:
 
       - name: Read backend file
         working-directory: ${{ env.WORKING_DIR }}
-        run: cat backends/backend.conf >> ${GITHUB_ENV}
+        run: cat backends/${{ inputs.environment }}.conf >> ${GITHUB_ENV}
+
+      - name: Commit TF Vars
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          echo "TF_VAR_rg_name=${{env.resource_group_name}}" >> ${GITHUB_ENV}
 
       - name: Azure Login
         uses: azure/login@v1
@@ -100,36 +106,36 @@ jobs:
       - name: Terraform Init
         id: init
         working-directory: ${{ env.WORKING_DIR }}
-        run: terraform init -backend-config=backends/backend.conf
+        run: terraform init -backend-config=backends/${{ inputs.environment }}.conf
 
       - name: Terraform Validate
         id: validate
         working-directory: ${{ env.WORKING_DIR }}
-        run: terraform validate -no-color
+        run: terraform validate
 
       - name: Terraform Plan Apply
         id: plan-apply
         working-directory: ${{ env.WORKING_DIR }}
         if: inputs.tf_action == 'plan'
-        run: terraform plan #-var-file=vars/vars.tfvars
+        run: terraform plan -var-file=vars/${{ inputs.environment }}.tfvars
 
       - name: Terraform Apply
         id: apply
         working-directory: ${{ env.WORKING_DIR }}
         if: inputs.tf_action == 'apply'
-        run: terraform apply -auto-approve #-var-file=vars/vars.tfvars 
+        run: terraform apply -auto-approve -var-file=vars/${{ inputs.environment }}.tfvars 
 
       - name: Terraform Plan Destroy
         id: plan-destroy
         working-directory: ${{ env.WORKING_DIR }}
         if: inputs.tf_action == 'plan-destroy'
-        run: terraform plan -destroy #-var-file=vars/vars.tfvars
+        run: terraform plan -destroy -var-file=vars/${{ inputs.environment }}.tfvars
 
       - name: Terraform Destroy
         id: destroy
         working-directory: ${{ env.WORKING_DIR }}
         if: inputs.tf_action == 'destroy'
-        run: terraform destroy -auto-approve #-var-file=vars/vars.tfvars 
+        run: terraform destroy -auto-approve -var-file=vars/${{ inputs.environment }}.tfvars 
 
       # - name: Capture Terraform Outputs
       #   id: outputs
