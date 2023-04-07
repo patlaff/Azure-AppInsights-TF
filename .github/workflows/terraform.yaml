@@ -1,5 +1,5 @@
-name: Get Teams Presence Terraform Pipeline
-run-name: Get Teams Presence - Terraform ${{ inputs.tf_action }}, Docker ${{ inputs.build_container }} by ${{ github.actor }}
+name: App Insights Terraform Pipeline
+run-name: App Insights - Terraform ${{ inputs.tf_action }} by ${{ github.actor }}
 
 on:
   workflow_dispatch:
@@ -50,7 +50,7 @@ jobs:
       - name: Check for Storage Account
         run: az storage account show --resource-group ${{env.resource_group_name}} --name ${{env.storage_account_name}} || echo "CREATE_STG=1" >> $GITHUB_ENV
 
-      - name: Create State Storage Account
+      - name: Create Storage Account
         if: ${{ env.CREATE_STG == 1 }}
         run: |
           az group create --location ${{env.STATE_STG_LOC}} --name ${{env.resource_group_name}}

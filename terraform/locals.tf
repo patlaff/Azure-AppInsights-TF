@@ -1,1 +1,3 @@
-common_name = "penn-mktg"
+locals {
+    common_name = "penn-mktg"
+}
