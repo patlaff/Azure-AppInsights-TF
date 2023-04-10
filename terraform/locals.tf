@@ -1,3 +1,3 @@
 locals {
-    common_name = "penn-mktg"
+    common_name = "laff"
 }
